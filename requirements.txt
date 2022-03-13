@@ -1,0 +1,6 @@
+opencv-python
+numpy
+face-recognition
+cmake
+dlib==19.18.0
+torchvision

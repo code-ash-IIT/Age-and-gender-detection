@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-#import face_recognition
+from mtcnn import MTCNN
 import cv2
 from PIL import Image
 from gender_model import ResNet9, get_default_device, to_device
@@ -16,6 +16,42 @@ model_gender.load_state_dict(torch.load('Models\Saved Model\gender_classificatio
 # defining output classes
 gender=['Female','Male']
 
+# load face detector
+detector = MTCNN()
+
+def detect_face(img):
+    
+    mt_res = detector.detect_faces(img)
+    return_res = []
+    
+    for face in mt_res:
+        x, y, width, height = face['box']
+        center = [x+(width/2), y+(height/2)]
+        max_border = max(width, height)
+        
+        # center alignment
+        left = max(int(center[0]-(max_border/2)), 0)
+        right = max(int(center[0]+(max_border/2)), 0)
+        top = max(int(center[1]-(max_border/2)), 0)
+        bottom = max(int(center[1]+(max_border/2)), 0)
+        
+        # crop the face
+        center_img_k = img[top:top+max_border, 
+                           left:left+max_border, :]
+        center_img = np.array(Image.fromarray(center_img_k).resize([224, 224]))
+        
+        # create predictions
+        # cv2_im = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
+        # pil_im = Image.fromarray(cv2_im)
+        sex_preds = predict_gender(Image.fromarray(center_img_k))
+        # age_preds = age_model.predict(center_img.reshape(1,224,224,3))[0][0]
+        age_preds=100
+
+        # output to the cv2
+        return_res.append([top, right, bottom, left, sex_preds, age_preds])
+        
+    return return_res
+
 # preprocess and preduict image from frame
 def predict_gender(img):
     transformations=tt.Compose([tt.Resize((96,96)), tt.RandomHorizontalFlip(), tt.ToTensor(),tt.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) ])
@@ -27,6 +63,7 @@ def predict_gender(img):
     # Pick index with highest probability
     _, preds  = torch.max(yb, dim=1)
     # Retrieve the class label
+    print(preds)
     return gender[preds[0].item()]
 
 
@@ -39,25 +76,21 @@ while True:
     ret, frame = video_capture.read()
 
     # Convert the image from BGR color (which OpenCV uses) to RGB color 
-    cv2_im = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
-    pil_im = Image.fromarray(cv2_im)
-    print(predict_gender(pil_im))
-    # rgb_frame = frame[:, :, ::-1]
+    rgb_frame = frame[:, :, ::-1]
     # print(len(rgb_frame))
-    break
 
-    # # Find all the faces in the current frame of video
-    # face_locations = detect_face(rgb_frame)
+    # Find all the faces in the current frame of video
+    face_locations = detect_face(rgb_frame)
 
-    # # Display the results
-    # for top, right, bottom, left, sex_preds, age_preds, emotion_preds in face_locations:
-    #     # Draw a box around the face
-    #     cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
+    # Display the results
+    for top, right, bottom, left, sex_preds, age_preds in face_locations:
+        # Draw a box around the face
+        cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
         
-    #     sex_text = 'Female' if sex_preds > 0.5 else 'Male'
-    #     cv2.putText(frame, 'Sex: {}({:.3f})'.format(sex_text, sex_preds), (left, top-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 1)
-    #     cv2.putText(frame, 'Age: {:.3f}'.format(age_preds), (left, top-25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 1)
-    #     cv2.putText(frame, 'Emotion: {}({:.3f})'.format(emotion_dict[np.argmax(emotion_preds)], np.max(emotion_preds)), (left, top-40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 1)
+        sex_text =":"
+        text1="Sex: "+sex_preds;
+        cv2.putText(frame, text1, (left, top-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 1)
+        cv2.putText(frame, 'Age: {:.3f}'.format(age_preds), (left, top-25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 1)
         
     # Display the resulting image
     cv2.imshow('Video', frame)

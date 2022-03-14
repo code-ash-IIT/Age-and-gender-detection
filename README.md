@@ -24,7 +24,7 @@ Domains: Super Resolution GAN, DL, Image Processing
 1. Clone this repo locally by using fllowing command in your terminal.
 
 ```
-git clone 
+git clone git@github.com:yashcode00/InterIIT.git
 ```
 2. Then, install all the dependicies by using the follwing commands on same terminal.
 

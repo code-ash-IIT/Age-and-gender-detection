@@ -5,3 +5,4 @@ torchvision
 boost
 mtcnn
 tensorflow
+deepface

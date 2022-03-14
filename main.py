@@ -5,13 +5,16 @@ import cv2
 from PIL import Image
 from gender_model import ResNet9, get_default_device, to_device
 import torchvision.transforms as tt
+from age_model import Age_Model
 
 # get present device
 device = get_default_device()
 
 # load the models parameters
 model_gender=ResNet9(3,2)
-model_gender.load_state_dict(torch.load('Models\Saved Model\gender_classification_trained_model_final.pth',map_location=torch.device('cpu')))
+model_gender.load_state_dict(torch.load('Models\Saved Model\gender_classification.pth',map_location=torch.device('cpu')))
+model_Age=Age_Model()
+
 
 # defining output classes
 gender=['Female','Male']
@@ -20,7 +23,6 @@ gender=['Female','Male']
 detector = MTCNN()
 
 def detect_face(img):
-    
     mt_res = detector.detect_faces(img)
     return_res = []
     
@@ -38,14 +40,13 @@ def detect_face(img):
         # crop the face
         center_img_k = img[top:top+max_border, 
                            left:left+max_border, :]
-        center_img = np.array(Image.fromarray(center_img_k).resize([224, 224]))
+        center_img = Image.fromarray(center_img_k)
         
         # create predictions
         # cv2_im = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
         # pil_im = Image.fromarray(cv2_im)
-        sex_preds = predict_gender(Image.fromarray(center_img_k))
-        # age_preds = age_model.predict(center_img.reshape(1,224,224,3))[0][0]
-        age_preds=100
+        sex_preds = predict_gender(center_img)
+        age_preds = model_Age.predict_age(center_img_k)
 
         # output to the cv2
         return_res.append([top, right, bottom, left, sex_preds, age_preds])
@@ -54,7 +55,7 @@ def detect_face(img):
 
 # preprocess and preduict image from frame
 def predict_gender(img):
-    transformations=tt.Compose([tt.Resize((96,96)), tt.RandomHorizontalFlip(), tt.ToTensor(),tt.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) ])
+    transformations=tt.Compose([tt.Resize((64,64)), tt.RandomHorizontalFlip(), tt.ToTensor(),tt.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) ])
     img=transformations(img)
     # Convert to a batch of 1
     xb = to_device(img.unsqueeze(0), device)
@@ -63,7 +64,7 @@ def predict_gender(img):
     # Pick index with highest probability
     _, preds  = torch.max(yb, dim=1)
     # Retrieve the class label
-    print(preds)
+    # print(preds)
     return gender[preds[0].item()]
 
 

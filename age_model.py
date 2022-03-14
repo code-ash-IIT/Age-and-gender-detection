@@ -32,7 +32,6 @@ class Age_Model():
         age_model = Model(inputs=model.input, outputs=base_model_output)
         #--------------------------
         #load weights
-        home = str(Path.home())
         if os.path.isfile('Models/Saved Model/age_model_weights.h5') != True:
             print("age_model_weights.h5 will be downloaded...")
             url = 'https://drive.google.com/uc?id=1YCox_4kJ-BYeXq27uUbasu--yz28zUMV'

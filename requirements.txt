@@ -6,3 +6,5 @@ boost
 mtcnn
 tensorflow
 deepface
+scipy
+time

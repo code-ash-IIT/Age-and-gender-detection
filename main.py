@@ -6,6 +6,10 @@ from PIL import Image
 from gender_model import ResNet9, get_default_device, to_device
 import torchvision.transforms as tt
 from age_model import Age_Model
+import scipy
+import os
+import time
+import gdown
 
 # get present device
 device = get_default_device()
@@ -14,7 +18,6 @@ device = get_default_device()
 model_gender=ResNet9(3,2)
 model_gender.load_state_dict(torch.load('Models\Saved Model\gender_classification.pth',map_location=torch.device('cpu')))
 model_Age=Age_Model()
-
 
 # defining output classes
 gender=['Female','Male']
@@ -61,45 +64,76 @@ def predict_gender(img):
     xb = to_device(img.unsqueeze(0), device)
     # Get predictions from model
     yb = model_gender(xb)
+    # print(yb)
+    probs = scipy.special.softmax(yb.detach().numpy()[0])
+    # print(probs)
+    confidence=str(round((max(probs))*100,2))+"%" 
     # Pick index with highest probability
     _, preds  = torch.max(yb, dim=1)
     # Retrieve the class label
     # print(preds)
-    return gender[preds[0].item()]
+    return str(gender[preds[0].item()]) + " (" +str(confidence)+ ")"
 
+def testVideos(vd):
+    # used to record the time when we processed last frame
+    prev_frame_time = 0
+    # used to record the time at which we processed current frame
+    new_frame_time = 0
+    # capturing camera frames using cv2
+    # Get a reference to webcam 
+    video_capture = cv2.VideoCapture(vd)
+    while video_capture.isOpened():
+        # Grab a single frame of video
+        ret, frame = video_capture.read()
 
+        # Convert the image from BGR color (which OpenCV uses) to RGB color 
+        rgb_frame = frame[:, :, ::-1]
+        # print(len(rgb_frame))
 
-# capturing camera frames using cv2
-# Get a reference to webcam 
-video_capture = cv2.VideoCapture(0)
-while True:
-    # Grab a single frame of video
-    ret, frame = video_capture.read()
+        # Find all the faces in the current frame of video
+        face_locations = detect_face(rgb_frame)
 
-    # Convert the image from BGR color (which OpenCV uses) to RGB color 
-    rgb_frame = frame[:, :, ::-1]
-    # print(len(rgb_frame))
+        # time when we finish processing for this frame
+        new_frame_time = time.time()
+    
+        # Calculating the fps
+    
+        # fps will be number of frame processed in given time frame
+        # since their will be most of time error of 0.001 second
+        # we will be subtracting it to get more accurate result
+        fps = 1/(new_frame_time-prev_frame_time)
+        prev_frame_time = new_frame_time
 
-    # Find all the faces in the current frame of video
-    face_locations = detect_face(rgb_frame)
+        # converting the fps into integer
+        fps = int(fps)
+    
+        # converting the fps to string so that we can display it on frame
+        # by using putText function
+        fps = str(fps)
+    
+        # putting the FPS count on the frame
+        cv2.putText(frame, fps, (7, 70), cv2.FONT_HERSHEY_SIMPLEX, 3, (100, 255, 0), 3, cv2.LINE_AA)
 
-    # Display the results
-    for top, right, bottom, left, sex_preds, age_preds in face_locations:
-        # Draw a box around the face
-        cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
-        
-        sex_text =":"
-        text1="Sex: "+sex_preds;
-        cv2.putText(frame, text1, (left, top-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 1)
-        cv2.putText(frame, 'Age: {:.3f}'.format(age_preds), (left, top-25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 1)
-        
-    # Display the resulting image
-    cv2.imshow('Video', frame)
-
-    # Hit 'q' on the keyboard to quit!
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-# Release handle to the webcam
-video_capture.release()
-cv2.destroyAllWindows()
+        # Display the results
+        for top, right, bottom, left, sex_preds, age_preds in face_locations:
+            # Draw a box around the face
+            cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
+            text1="Gender: "+sex_preds
+            cv2.putText(frame, text1, (left, top-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 1)
+            cv2.putText(frame, 'Age: {:.3f}'.format(age_preds), (left, top-25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12), 1)
+            
+        # Display the resulting image
+        cv2.imshow('Video', frame)
+        # print(fps, ",",new_frame_time)
+        # Hit 'q' on the keyboard to quit!
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    # Release handle to the webcam
+    video_capture.release()
+    cv2.destroyAllWindows()
+i=0
+for vds in os.listdir("Test Videos/"):
+    print("Test Videos/"+vds)
+    testVideos("Test Videos/"+vds)
+    print("Video ",i," done!")
+    i+=1

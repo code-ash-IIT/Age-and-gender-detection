@@ -113,6 +113,7 @@ def testVideos(vd):
     
         # putting the FPS count on the frame
         cv2.putText(frame, fps, (7, 70), cv2.FONT_HERSHEY_SIMPLEX, 3, (100, 255, 0), 3, cv2.LINE_AA)
+        cv2.putText(frame, "Press 'n' to skip to next video!", (100, 180), cv2.FONT_HERSHEY_SIMPLEX, 3, (100, 255, 0), 3, cv2.LINE_AA)
 
         # Display the results
         for top, right, bottom, left, sex_preds, age_preds in face_locations:
@@ -126,7 +127,13 @@ def testVideos(vd):
         cv2.imshow('Video', frame)
         # print(fps, ",",new_frame_time)
         # Hit 'q' on the keyboard to quit!
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        k = cv2.waitKey(1)
+        # print("Here!")
+        # print(k)
+        # if cv2.waitKey(1) & 0xFF == ord('q'):
+        #     break
+        if k == 110:
+            print( "Going to next video..........")
             break
     # Release handle to the webcam
     video_capture.release()
@@ -137,3 +144,4 @@ for vds in os.listdir("Test Videos/"):
     testVideos("Test Videos/"+vds)
     print("Video ",i," done!")
     i+=1
+# testVideos("Test Videos\Cctv2.mp4")
